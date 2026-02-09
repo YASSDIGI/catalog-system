@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>サービスカタログ | TOE</title>
+  <meta name="description" content="Web制作・AI開発・動画制作・SNSマーケティング。TOEのサービス一覧をご覧ください。" />
+  <meta property="og:title" content="サービスカタログ | TOE" />
+  <meta property="og:description" content="Web制作からAI導入まで、ビジネスの成長を加速させるソリューション。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Cormorant+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --ink: #0a0a0a; --paper: #faf9f7; --stone: #6b6560; --mist: #e8e5e0;
+      --accent: #c4553a; --card-bg: #fff;
+      --font-jp: 'Zen Kaku Gothic New', sans-serif;
+      --font-display: 'Cormorant Garamond', serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--font-jp); background: var(--paper); color: var(--ink); line-height: 1.8; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+    ::selection { background: var(--accent); color: #fff; }
+
+    .hero { position: relative; padding: 120px 40px 80px; text-align: center; overflow: hidden; }
+    .hero::before { content: ''; position: absolute; top: -200px; right: -150px; width: 600px; height: 600px; background: radial-gradient(circle, rgba(196,85,58,0.06) 0%, transparent 70%); border-radius: 50%; pointer-events: none; }
+    .hero-label { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: var(--accent); margin-bottom: 24px; animation: fadeDown 0.8s ease both; }
+    .hero-label::before, .hero-label::after { content: ''; display: inline-block; width: 32px; height: 1px; background: var(--accent); vertical-align: middle; margin: 0 16px; opacity: 0.5; }
+    .hero h1 { font-family: var(--font-display); font-size: clamp(42px, 7vw, 80px); font-weight: 400; letter-spacing: -1px; line-height: 1.15; margin-bottom: 8px; animation: fadeUp 0.8s ease 0.1s both; }
+    .hero-sub { font-size: clamp(14px, 2vw, 17px); color: var(--stone); max-width: 520px; margin: 0 auto 40px; animation: fadeUp 0.8s ease 0.2s both; }
+    .hero-stats { display: flex; justify-content: center; gap: 48px; animation: fadeUp 0.8s ease 0.3s both; }
+    .hero-stat-num { font-family: var(--font-display); font-size: 36px; font-weight: 600; line-height: 1; }
+    .hero-stat-label { font-size: 12px; color: var(--stone); margin-top: 4px; letter-spacing: 1px; }
+    .hero-divider { width: 1px; height: 40px; background: var(--mist); align-self: center; }
+
+    .filter-section { max-width: 1100px; margin: 0 auto; padding: 0 40px 32px; animation: fadeUp 0.8s ease 0.4s both; }
+    .filter-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .filter-btn { padding: 9px 22px; border: 1.5px solid var(--mist); border-radius: 100px; background: transparent; font-family: var(--font-jp); font-size: 13px; font-weight: 500; color: var(--stone); cursor: pointer; transition: all 0.25s; white-space: nowrap; }
+    .filter-btn:hover { border-color: var(--ink); color: var(--ink); }
+    .filter-btn.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .filter-count { margin-left: auto; font-size: 13px; color: var(--stone); font-weight: 500; }
+    .search-wrap { position: relative; }
+    .search-wrap svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--stone); pointer-events: none; }
+    .search-input { padding: 9px 18px 9px 40px; border: 1.5px solid var(--mist); border-radius: 100px; background: transparent; font-family: var(--font-jp); font-size: 13px; color: var(--ink); outline: none; width: 200px; transition: all 0.25s; }
+    .search-input:focus { border-color: var(--ink); width: 260px; }
+    .search-input::placeholder { color: #b5b0aa; }
+
+    .catalog { max-width: 1100px; margin: 0 auto; padding: 0 40px 80px; }
+    .catalog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; }
+    .card { background: var(--card-bg); border-radius: 6px; border: 1px solid rgba(0,0,0,0.05); overflow: hidden; transition: all 0.35s cubic-bezier(0.25,0.46,0.45,0.94); opacity: 0; transform: translateY(24px); animation: cardReveal 0.6s ease forwards; }
+    .card:nth-child(1){animation-delay:.05s}.card:nth-child(2){animation-delay:.1s}.card:nth-child(3){animation-delay:.15s}.card:nth-child(4){animation-delay:.2s}.card:nth-child(5){animation-delay:.25s}.card:nth-child(6){animation-delay:.3s}.card:nth-child(7){animation-delay:.35s}.card:nth-child(8){animation-delay:.4s}
+    .card:hover { transform: translateY(-6px); box-shadow: 0 12px 40px rgba(10,10,10,0.08); border-color: transparent; }
+    .card-accent { height: 4px; width: 100%; transition: height 0.3s; }
+    .card:hover .card-accent { height: 6px; }
+    .card-img { width: 100%; height: 180px; object-fit: cover; display: block; }
+    .card-body { padding: 28px 28px 24px; }
+    .card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+    .card-category { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+    .card-sku { font-family: var(--font-display); font-size: 13px; color: #b5b0aa; font-weight: 500; }
+    .card-title { font-size: 19px; font-weight: 900; line-height: 1.4; margin-bottom: 10px; }
+    .card-desc { font-size: 14px; color: var(--stone); line-height: 1.75; margin-bottom: 20px; }
+    .card-footer { display: flex; align-items: flex-end; justify-content: space-between; padding-top: 18px; border-top: 1px solid rgba(0,0,0,0.05); }
+    .card-price { font-family: var(--font-display); font-size: 30px; font-weight: 600; line-height: 1; }
+    .card-price-yen { font-size: 16px; font-weight: 400; color: var(--stone); }
+    .card-unit { font-size: 13px; color: var(--stone); margin-left: 2px; }
+    .card-cta { display: inline-flex; align-items: center; gap: 8px; padding: 10px 22px; border: 1.5px solid var(--ink); border-radius: 100px; background: transparent; font-family: var(--font-jp); font-size: 12px; font-weight: 700; color: var(--ink); cursor: pointer; transition: all 0.25s; text-decoration: none; letter-spacing: 0.5px; }
+    .card-cta:hover { background: var(--ink); color: #fff; }
+    .card-cta svg { transition: transform 0.25s; }
+    .card-cta:hover svg { transform: translateX(3px); }
+
+    .empty, .loading-state { text-align: center; padding: 80px 20px; grid-column: 1 / -1; }
+    .empty p, .loading-state p { color: var(--stone); font-size: 15px; }
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--mist); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 16px; }
+
+    .cta-section { max-width: 1100px; margin: 0 auto 80px; padding: 0 40px; }
+    .cta-box { background: var(--ink); border-radius: 12px; padding: 60px 48px; text-align: center; position: relative; overflow: hidden; }
+    .cta-box::before { content: ''; position: absolute; top: -80px; right: -80px; width: 300px; height: 300px; background: radial-gradient(circle, rgba(196,85,58,0.25) 0%, transparent 70%); border-radius: 50%; }
+    .cta-box h2 { font-family: var(--font-display); font-size: clamp(28px, 4vw, 40px); font-weight: 400; color: #fff; margin-bottom: 12px; position: relative; }
+    .cta-box p { font-size: 15px; color: rgba(255,255,255,0.6); margin-bottom: 32px; position: relative; }
+    .cta-button { display: inline-flex; align-items: center; gap: 10px; padding: 16px 36px; background: #fff; color: var(--ink); border: none; border-radius: 100px; font-family: var(--font-jp); font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.25s; text-decoration: none; position: relative; }
+    .cta-button:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+
+    .footer { text-align: center; padding: 32px 40px; border-top: 1px solid var(--mist); font-size: 12px; color: var(--stone); letter-spacing: 1px; }
+    .error-banner { max-width: 600px; margin: 80px auto; padding: 40px; text-align: center; background: #fff; border-radius: 12px; border: 1px solid var(--mist); }
+    .error-banner h2 { font-size: 20px; margin-bottom: 12px; }
+    .error-banner p { color: var(--stone); font-size: 14px; line-height: 1.7; }
+
+    @keyframes fadeUp { from { opacity:0; transform:translateY(20px) } to { opacity:1; transform:translateY(0) } }
+    @keyframes fadeDown { from { opacity:0; transform:translateY(-10px) } to { opacity:1; transform:translateY(0) } }
+    @keyframes cardReveal { to { opacity:1; transform:translateY(0) } }
+    @keyframes spin { to { transform:rotate(360deg) } }
+
+    @media (max-width:768px) {
+      .hero{padding:80px 24px 48px} .hero-stats{gap:24px} .hero-stat-num{font-size:28px}
+      .filter-section,.catalog,.cta-section{padding-left:20px;padding-right:20px}
+      .catalog-grid{grid-template-columns:1fr} .card-body{padding:22px} .card-price{font-size:26px}
+      .cta-box{padding:40px 24px} .hero-divider{display:none}
+      .search-input,.search-input:focus{width:100%}
+    }
+    @media (max-width:480px) { .hero-stats{flex-direction:column;gap:16px} .filter-count{display:none} }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="loading-state" style="padding:200px 20px">
+    <div class="spinner"></div>
+    <p>カタログを読み込み中...</p>
+  </div>
+</div>
+
+<script>
+// ビルド時に環境変数が注入される
+const SUPABASE_URL = '__SUPABASE_URL__';
+const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+
+const CONTACT_EMAIL = 'info@example.com'; // ← お問い合わせ先メール
+const COMPANY_NAME = 'TOE Inc.';
+
+let sb, allItems = [], allCategories = [], activeCategory = 'all', searchQuery = '';
+
+function fmtPrice(p) { return p >= 10000 ? (p/10000) + '' : p.toLocaleString(); }
+function fmtUnit(p) { return p >= 10000 ? '万円' : '円'; }
+
+const arrowSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+const searchSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+
+async function init() {
+  if (!SUPABASE_URL || SUPABASE_URL === '__SUPABASE_URL__') {
+    document.getElementById('app').innerHTML = '<div class="error-banner"><h2>⚙️ 設定が必要です</h2><p>Vercel の環境変数に <code>NEXT_PUBLIC_SUPABASE_URL</code> と <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> を設定し、再デプロイしてください。</p></div>';
+    return;
+  }
+
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  try {
+    const [catRes, itemRes] = await Promise.all([
+      sb.from('catalog_categories').select('*').order('sort_order'),
+      sb.from('catalog_items').select('*, catalog_categories(name, color)').eq('status', 'active').order('sort_order'),
+    ]);
+    if (catRes.error) throw catRes.error;
+    if (itemRes.error) throw itemRes.error;
+
+    allCategories = catRes.data || [];
+    allItems = (itemRes.data || []).map(i => ({
+      ...i,
+      category_name: i.catalog_categories?.name || '',
+      category_color: i.catalog_categories?.color || '#999',
+    }));
+    renderPage();
+  } catch (e) {
+    document.getElementById('app').innerHTML = `<div class="error-banner"><h2>接続エラー</h2><p>${e.message}</p></div>`;
+  }
+}
+
+function renderPage() {
+  const filtered = getFiltered();
+  const minPrice = allItems.length > 0 ? Math.min(...allItems.map(i => i.price)) : 0;
+
+  document.getElementById('app').innerHTML = `
+    <section class="hero">
+      <div class="hero-label">Service Catalog</div>
+      <h1>Services</h1>
+      <p class="hero-sub">Web制作からAI導入まで、ビジネスの成長を加速させるソリューションをご提供します。</p>
+      <div class="hero-stats">
+        <div class="hero-stat"><div class="hero-stat-num">${allItems.length}</div><div class="hero-stat-label">サービス</div></div>
+        <div class="hero-divider"></div>
+        <div class="hero-stat"><div class="hero-stat-num">${allCategories.length}</div><div class="hero-stat-label">カテゴリ</div></div>
+        <div class="hero-divider"></div>
+        <div class="hero-stat"><div class="hero-stat-num">${minPrice ? fmtPrice(minPrice)+fmtUnit(minPrice)+'〜' : '—'}</div><div class="hero-stat-label">税抜価格</div></div>
+      </div>
+    </section>
+    <section class="filter-section">
+      <div class="filter-bar">
+        <div class="search-wrap">${searchSvg}<input type="text" class="search-input" placeholder="サービスを検索..." value="${searchQuery}" id="searchInput"></div>
+        <button class="filter-btn${activeCategory==='all'?' active':''}" data-cat="all">すべて</button>
+        ${allCategories.map(c=>`<button class="filter-btn${activeCategory===c.id?' active':''}" data-cat="${c.id}">${c.name}</button>`).join('')}
+        <span class="filter-count" id="filterCount">${filtered.length} サービス</span>
+      </div>
+    </section>
+    <section class="catalog"><div class="catalog-grid" id="grid">${renderCards(filtered)}</div></section>
+    <section class="cta-section">
+      <div class="cta-box">
+        <h2>Get in Touch</h2>
+        <p>サービスに関するご質問やお見積もりのご相談はお気軽にどうぞ。</p>
+        <a href="mailto:${CONTACT_EMAIL}" class="cta-button">お問い合わせ ${arrowSvg}</a>
+      </div>
+    </section>
+    <footer class="footer">&copy; ${new Date().getFullYear()} ${COMPANY_NAME}. All Rights Reserved.</footer>`;
+
+  // Event listeners
+  document.getElementById('searchInput').addEventListener('input', e => { searchQuery = e.target.value; updateGrid(); });
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeCategory = btn.dataset.cat;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      updateGrid();
+    });
+  });
+}
+
+function getFiltered() {
+  const q = searchQuery.toLowerCase();
+  return allItems.filter(i =>
+    (activeCategory === 'all' || i.category_id === activeCategory) &&
+    (!q || i.name.toLowerCase().includes(q) || (i.description||'').toLowerCase().includes(q) || (i.sku||'').toLowerCase().includes(q))
+  );
+}
+
+function renderCards(items) {
+  if (!items.length) return '<div class="empty"><p>検索条件に一致するサービスがありません</p></div>';
+  return items.map((item, i) => {
+    const c = item.category_color;
+    const imgHtml = item.image_url ? `<img class="card-img" src="${item.image_url}" alt="${item.name}" loading="lazy">` : '';
+    return `<div class="card" style="animation-delay:${i*0.06}s">
+      <div class="card-accent" style="background:${c}"></div>
+      ${imgHtml}
+      <div class="card-body">
+        <div class="card-header"><span class="card-category" style="color:${c}">${item.category_name||'未分類'}</span><span class="card-sku">${item.sku||''}</span></div>
+        <h3 class="card-title">${item.name}</h3>
+        <p class="card-desc">${item.description||''}</p>
+        <div class="card-footer">
+          <div><span class="card-price-yen">¥</span><span class="card-price">${fmtPrice(item.price)}</span><span class="card-price-yen">${fmtUnit(item.price)}</span><span class="card-unit">/ ${item.unit==='月'?'月額':item.unit}</span></div>
+          <a href="mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(item.name+'について')}" class="card-cta">お問い合わせ ${arrowSvg}</a>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateGrid() {
+  const f = getFiltered();
+  document.getElementById('grid').innerHTML = renderCards(f);
+  document.getElementById('filterCount').textContent = f.length + ' サービス';
+}
+
+init();
+</script>
+</body>
+</html>

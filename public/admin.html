@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>カタログ管理 - Admin</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{--ink:#111;--bg:#f0f2f5;--card:#fff;--border:#e5e7eb;--muted:#6b7280;--blue:#2563eb;--blue-dark:#1e40af;--green:#059669;--red:#ef4444;--purple:#7c3aed;--amber:#f59e0b}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px}
+
+    .header{background:linear-gradient(135deg,#0f172a,#1e293b);padding:24px 32px;color:#fff;border-bottom:3px solid var(--blue)}
+    .header-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+    .header-left{display:flex;align-items:center;gap:12px}
+    .header-icon{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--blue),#3b82f6);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(37,99,235,0.4)}
+    .header h1{font-size:22px;font-weight:800;letter-spacing:-0.3px}
+    .header-sub{font-size:13px;color:#94a3b8}
+    .header-actions{display:flex;gap:10px;flex-wrap:wrap}
+    .btn-ghost{padding:9px 16px;border:1px solid rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.06);color:#e2e8f0;font-size:13px;font-weight:600;cursor:pointer;font-family:'Noto Sans JP',sans-serif;display:flex;align-items:center;gap:6px;backdrop-filter:blur(8px);transition:all .15s}
+    .btn-ghost:hover{background:rgba(255,255,255,0.12)}
+    .btn-primary{padding:9px 18px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--blue-dark),var(--blue));color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;display:flex;align-items:center;gap:6px;box-shadow:0 4px 14px rgba(37,99,235,0.35);transition:all .15s}
+    .btn-primary:hover{transform:translateY(-1px)}
+    .content{max-width:1280px;margin:0 auto;padding:24px 32px 48px}
+    .stats{display:flex;gap:14px;margin-bottom:24px;flex-wrap:wrap}
+    .stat-card{background:var(--card);border-radius:14px;padding:18px 22px;border:1px solid var(--border);flex:1;min-width:140;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+    .stat-label{font-size:12px;color:var(--muted);font-weight:500;margin-bottom:6px}
+    .stat-value{font-size:26px;font-weight:800;font-family:'DM Sans',sans-serif;letter-spacing:-0.5px}
+    .filter-bar{background:var(--card);border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:12px;margin-bottom:20px;border:1px solid var(--border);flex-wrap:wrap;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+    .search-wrap{position:relative;flex:1;min-width:200px}
+    .search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9ca3af;pointer-events:none}
+    .search-input{width:100%;padding:10px 14px 10px 38px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;outline:none;background:#f9fafb;font-family:'Noto Sans JP',sans-serif}
+    .search-input:focus{border-color:var(--blue);background:#fff}
+    select{padding:10px 36px 10px 14px;border:1.5px solid #d1d5db;border-radius:10px;font-size:14px;outline:none;background:#fafafa;font-family:'Noto Sans JP',sans-serif;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+    .view-toggle{display:flex;gap:2px;background:#f3f4f6;border-radius:8px;padding:3px}
+    .view-btn{width:36px;height:36px;border-radius:6px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;background:transparent;color:#9ca3af;transition:all .15s}
+    .view-btn.active{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.1);color:var(--ink)}
+    .result-count{font-size:13px;color:var(--muted);font-weight:500;white-space:nowrap}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+    .card{background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;transition:all .2s;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+    .card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08);transform:translateY(-2px)}
+    .card-body{padding:18px 20px}
+    .card-tags{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+    .tag{font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:4px}
+    .tag-dot{width:6px;height:6px;border-radius:50%}
+    .card h3{font-size:16px;font-weight:700;margin-bottom:6px}
+    .card-desc{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .card-price{font-size:20px;font-weight:800;font-family:'DM Sans',sans-serif}
+    .card-unit{font-size:12px;color:#9ca3af;margin-left:4px}
+    .card-sku{font-size:11px;color:#9ca3af;font-family:'DM Sans',monospace}
+    .card-footer{display:flex;gap:6px;margin-top:14px;border-top:1px solid #f3f4f6;padding-top:12px}
+    .card-action{display:flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid var(--border);border-radius:7px;background:#fff;font-size:12px;font-weight:500;cursor:pointer;color:var(--muted);font-family:'Noto Sans JP',sans-serif;transition:all .15s}
+    .card-action:hover{background:#f9fafb}.card-action.danger{color:var(--red)}.card-action.danger:hover{background:#fef2f2}
+    .table-wrap{background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:auto;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    thead tr{background:#f9fafb;border-bottom:1px solid var(--border)}
+    th{padding:12px 16px;text-align:left;font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
+    td{padding:12px 16px;border-bottom:1px solid #f3f4f6}
+    tbody tr:hover{background:#f9fafb}
+    .td-sku{font-family:'DM Sans',monospace;font-size:12px;color:#9ca3af}
+    .td-name{font-weight:600}.td-price{font-weight:700;font-family:'DM Sans',sans-serif}
+    .td-actions{display:flex;gap:4px}
+    .td-actions button{background:none;border:none;cursor:pointer;padding:4px;color:var(--muted)}
+    .td-actions button.danger{color:var(--red)}
+    .modal-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);backdrop-filter:blur(6px);animation:fadeIn .2s ease}
+    .modal{background:#fff;border-radius:16px;width:90%;max-width:620px;max-height:85vh;overflow:auto;box-shadow:0 25px 60px rgba(0,0,0,0.25);animation:slideUp .25s ease}
+    .modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;z-index:2;border-radius:16px 16px 0 0}
+    .modal-header h2{font-size:18px;font-weight:700}
+    .modal-close{background:#f3f4f6;border:none;border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+    .modal-body{padding:24px}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.form-full{grid-column:1/-1}
+    .form-field{margin-bottom:2px}.form-field label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px}
+    .form-field label .req{color:var(--red);margin-left:4px}
+    .form-field input,.form-field textarea,.form-field select{width:100%;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:10px;font-size:14px;outline:none;font-family:'Noto Sans JP',sans-serif;background:#fafafa}
+    .form-field input:focus,.form-field textarea:focus,.form-field select:focus{border-color:var(--blue);background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,0.08)}
+    .form-field textarea{resize:vertical}
+    .form-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:20px}
+    .btn-cancel{padding:10px 24px;border:1.5px solid #d1d5db;border-radius:10px;background:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:'Noto Sans JP',sans-serif;color:#374151}
+    .btn-save{padding:10px 28px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--blue-dark),var(--blue));color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:'Noto Sans JP',sans-serif;box-shadow:0 4px 14px rgba(37,99,235,0.3)}
+    .btn-delete{padding:10px 20px;border:none;border-radius:10px;background:var(--red);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:'Noto Sans JP',sans-serif;box-shadow:0 4px 12px rgba(239,68,68,0.3)}
+    .loading{text-align:center;padding:60px;color:var(--muted)}
+    .spinner{width:32px;height:32px;border:3px solid #e5e7eb;border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
+    .empty{text-align:center;padding:60px 20px;background:var(--card);border-radius:14px;border:1px solid var(--border)}.empty p{color:var(--muted);font-size:15px}
+    .toast{position:fixed;bottom:24px;right:24px;z-index:2000;padding:14px 24px;border-radius:12px;font-size:14px;font-weight:600;color:#fff;animation:slideUp .3s ease;box-shadow:0 8px 24px rgba(0,0,0,0.15)}
+    .toast.success{background:var(--green)}.toast.error{background:var(--red)}
+    .cat-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+    .cat-chip{display:flex;align-items:center;gap:8px;padding:8px 14px;background:#f9fafb;border-radius:10px;border:1px solid var(--border)}
+    .cat-chip .dot{width:12px;height:12px;border-radius:4px}
+    .cat-chip span{font-size:13px;font-weight:500}
+    .cat-chip button{background:none;border:none;cursor:pointer;color:#9ca3af;font-size:16px;padding:0 2px}
+    .cat-add{display:flex;gap:10px;flex-wrap:wrap}.cat-colors{display:flex;gap:4px;align-items:center}
+    .cat-color-btn{width:28px;height:28px;border-radius:8px;cursor:pointer;flex-shrink:0;transition:all .15s}
+    .cat-add-btn{padding:8px 18px;border:none;border-radius:10px;background:var(--ink);color:#fff;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif}
+
+    .login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}
+    .login-card{background:#fff;border-radius:16px;padding:48px;max-width:420px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,0.06);animation:slideUp .4s ease}
+    .login-card h1{font-size:22px;font-weight:800;margin-bottom:8px}
+    .login-card p{font-size:14px;color:var(--muted);margin-bottom:28px;line-height:1.6}
+    .login-card label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#374151}
+    .login-card input{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;outline:none;background:#fafafa;margin-bottom:16px;font-family:'Noto Sans JP',sans-serif}
+    .login-card input:focus{border-color:var(--blue);background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,0.08)}
+    .login-btn{width:100%;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;background:linear-gradient(135deg,var(--blue-dark),var(--blue));color:#fff;box-shadow:0 4px 14px rgba(37,99,235,0.25);transition:all .15s;margin-bottom:12px}
+    .login-btn:hover{transform:translateY(-1px)}
+    .login-error{color:var(--red);font-size:13px;margin-top:8px;min-height:20px}
+    .login-divider{text-align:center;color:#9ca3af;font-size:12px;margin:16px 0;position:relative}
+    .login-divider::before,.login-divider::after{content:'';position:absolute;top:50%;width:40%;height:1px;background:#e5e7eb}
+    .login-divider::before{left:0}.login-divider::after{right:0}
+
+    @media(max-width:768px){.header{padding:20px 16px}.content{padding:16px}.grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.stats{flex-direction:column}}
+  </style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ビルド時に環境変数が注入される
+const SUPABASE_URL = '__SUPABASE_URL__';
+const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+
+let sb = null, user = null;
+let state = {
+  items: [], categories: [], search: '', filterCategory: 'all', filterStatus: 'all',
+  viewMode: 'grid', modal: null, editingItem: null, deleteTarget: null, toast: null, loading: false,
+};
+
+const STATUS_MAP = {
+  active:   { label:'公開中',     bg:'#dcfce7', color:'#166534', dot:'#22c55e' },
+  draft:    { label:'下書き',     bg:'#fef3c7', color:'#92400e', dot:'#f59e0b' },
+  archived: { label:'アーカイブ', bg:'#f3f4f6', color:'#374151', dot:'#9ca3af' },
+};
+const fmtPrice = p => new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY'}).format(p);
+
+// Icons
+const I = {
+  pkg:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>',
+  plus:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+  search:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+  grid:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>',
+  list:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
+  edit:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+  copy:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  trash:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  close:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  download:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+  tag:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>',
+  logout:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
+};
+
+// === Auth ===
+async function handleLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  if (!email || !pass) { document.getElementById('login-error').textContent = 'メールとパスワードを入力してください'; return; }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { document.getElementById('login-error').textContent = error.message; return; }
+  user = data.user;
+  await loadData();
+}
+
+async function handleSignup() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  if (!email || !pass) { document.getElementById('login-error').textContent = 'メールとパスワードを入力してください'; return; }
+  if (pass.length < 6) { document.getElementById('login-error').textContent = 'パスワードは6文字以上にしてください'; return; }
+  const { data, error } = await sb.auth.signUp({ email, password: pass });
+  if (error) { document.getElementById('login-error').textContent = error.message; return; }
+  if (data.user) {
+    document.getElementById('login-error').style.color = 'var(--green)';
+    document.getElementById('login-error').textContent = '確認メールを送信しました。メール内のリンクをクリックしてからログインしてください。';
+  }
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  user = null;
+  render();
+}
+
+// === Data ===
+async function fetchAll() {
+  const [catRes, itemRes] = await Promise.all([
+    sb.from('catalog_categories').select('*').order('sort_order'),
+    sb.from('catalog_items').select('*, catalog_categories(name, color)').order('sort_order'),
+  ]);
+  state.categories = catRes.data || [];
+  state.items = (itemRes.data || []).map(i => ({
+    ...i, category_name: i.catalog_categories?.name||'', category_color: i.catalog_categories?.color||'#999',
+  }));
+}
+
+async function loadData() { state.loading = true; render(); await fetchAll(); state.loading = false; render(); }
+
+async function saveItem(form) {
+  const p = { name:form.name, description:form.description, category_id:form.category_id||null, price:parseInt(form.price)||0, unit:form.unit, status:form.status, sku:form.sku, image_url:form.image_url };
+  const { error } = form.id ? await sb.from('catalog_items').update(p).eq('id',form.id) : await sb.from('catalog_items').insert(p);
+  if (error) { showToast('保存エラー: '+error.message,'error'); return; }
+  showToast(form.id?'更新しました':'追加しました','success');
+  state.modal=null; state.editingItem=null; await loadData();
+}
+
+async function deleteItem(id) {
+  const {error} = await sb.from('catalog_items').delete().eq('id',id);
+  if (error) { showToast('削除エラー: '+error.message,'error'); return; }
+  showToast('削除しました','success'); state.modal=null; state.deleteTarget=null; await loadData();
+}
+
+async function duplicateItem(item) {
+  const {error} = await sb.from('catalog_items').insert({ name:item.name+'（コピー）', description:item.description, category_id:item.category_id, price:item.price, unit:item.unit, status:'draft', sku:'', image_url:item.image_url });
+  if (error) { showToast('複製エラー: '+error.message,'error'); return; }
+  showToast('複製しました','success'); await loadData();
+}
+
+async function addCategory(name, color) {
+  const mx = state.categories.reduce((m,c)=>Math.max(m,c.sort_order||0),0);
+  const {error} = await sb.from('catalog_categories').insert({name,color,sort_order:mx+1});
+  if(error){showToast('エラー: '+error.message,'error');return;} await fetchAll(); render();
+}
+
+async function deleteCategory(id) {
+  const {error} = await sb.from('catalog_categories').delete().eq('id',id);
+  if(error){showToast('エラー: '+error.message,'error');return;} await fetchAll(); render();
+}
+
+function exportCSV() {
+  const h=['SKU','商品名','カテゴリ','価格','単位','ステータス','説明'];
+  const r=state.items.map(i=>[i.sku,i.name,i.category_name||'',i.price,i.unit,STATUS_MAP[i.status]?.label||'','"'+(i.description||'').replace(/"/g,'""')+'"']);
+  const csv=[h.join(','),...r.map(r=>r.join(','))].join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));a.download='catalog_export.csv';a.click();
+}
+
+function showToast(msg,type='success'){state.toast={msg,type};render();setTimeout(()=>{state.toast=null;render();},3000);}
+function getFiltered(){const q=state.search.toLowerCase();return state.items.filter(i=>(!q||i.name.toLowerCase().includes(q)||(i.description||'').toLowerCase().includes(q)||(i.sku||'').toLowerCase().includes(q))&&(state.filterCategory==='all'||i.category_id===state.filterCategory)&&(state.filterStatus==='all'||i.status===state.filterStatus));}
+
+// === Render ===
+function render() {
+  const app = document.getElementById('app');
+
+  // Not configured
+  if (!SUPABASE_URL || SUPABASE_URL === '__SUPABASE_URL__') {
+    app.innerHTML = '<div class="login-screen"><div class="login-card"><h1>⚙️ 設定が必要です</h1><p>Vercel の環境変数に <code>NEXT_PUBLIC_SUPABASE_URL</code> と <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> を設定し、再デプロイしてください。</p></div></div>';
+    return;
+  }
+
+  // Login screen
+  if (!user) {
+    app.innerHTML = `<div class="login-screen"><div class="login-card">
+      <h1>📦 カタログ管理</h1>
+      <p>Supabaseアカウントでログインして、カタログを管理します。</p>
+      <label>メールアドレス</label><input id="login-email" type="email" placeholder="admin@example.com">
+      <label>パスワード</label><input id="login-pass" type="password" placeholder="••••••">
+      <button class="login-btn" onclick="handleLogin()">ログイン</button>
+      <div class="login-divider">または</div>
+      <button class="login-btn" style="background:#374151;box-shadow:none" onclick="handleSignup()">新規アカウント作成</button>
+      <div id="login-error" class="login-error"></div>
+    </div></div>`;
+    return;
+  }
+
+  // Main admin UI
+  const filtered = getFiltered();
+  const stats = { total:state.items.length, active:state.items.filter(i=>i.status==='active').length, cats:state.categories.length, val:state.items.reduce((s,i)=>s+i.price,0) };
+
+  let h = `<div class="header"><div class="header-inner"><div><div class="header-left"><div class="header-icon">${I.pkg}</div><h1>カタログ管理</h1></div><div class="header-sub">Supabase連携 · ${user.email}</div></div>
+    <div class="header-actions">
+      <button class="btn-ghost" onclick="exportCSV()">${I.download} CSV出力</button>
+      <button class="btn-ghost" onclick="state.modal='category';render()">${I.tag} カテゴリ</button>
+      <button class="btn-primary" onclick="state.editingItem=null;state.modal='item';render()">${I.plus} 新規追加</button>
+      <button class="btn-ghost" onclick="handleLogout()">${I.logout}</button>
+    </div></div></div>
+    <div class="content">
+      <div class="stats">
+        <div class="stat-card"><div class="stat-label">総アイテム数</div><div class="stat-value">${stats.total}</div></div>
+        <div class="stat-card"><div class="stat-label">公開中</div><div class="stat-value" style="color:var(--green)">${stats.active}</div></div>
+        <div class="stat-card"><div class="stat-label">カテゴリ数</div><div class="stat-value" style="color:var(--purple)">${stats.cats}</div></div>
+        <div class="stat-card"><div class="stat-label">合計額</div><div class="stat-value" style="color:var(--blue)">${fmtPrice(stats.val)}</div></div>
+      </div>
+      <div class="filter-bar">
+        <div class="search-wrap">${I.search}<input class="search-input" placeholder="検索..." value="${state.search}" oninput="state.search=this.value;render()"></div>
+        <select onchange="state.filterCategory=this.value;render()"><option value="all">全カテゴリ</option>${state.categories.map(c=>`<option value="${c.id}"${state.filterCategory===c.id?' selected':''}>${c.name}</option>`).join('')}</select>
+        <select onchange="state.filterStatus=this.value;render()"><option value="all">全ステータス</option><option value="active"${state.filterStatus==='active'?' selected':''}>公開中</option><option value="draft"${state.filterStatus==='draft'?' selected':''}>下書き</option><option value="archived"${state.filterStatus==='archived'?' selected':''}>アーカイブ</option></select>
+        <div class="view-toggle"><button class="view-btn${state.viewMode==='grid'?' active':''}" onclick="state.viewMode='grid';render()">${I.grid}</button><button class="view-btn${state.viewMode==='list'?' active':''}" onclick="state.viewMode='list';render()">${I.list}</button></div>
+        <span class="result-count">${filtered.length} 件</span>
+      </div>`;
+
+  if (state.loading) h += '<div class="loading"><div class="spinner"></div>読み込み中...</div>';
+  else if (!filtered.length) h += '<div class="empty"><p>該当するアイテムがありません</p></div>';
+  else if (state.viewMode==='grid') {
+    h += '<div class="grid">';
+    filtered.forEach(item => {
+      const st=STATUS_MAP[item.status]||STATUS_MAP.draft; const cc=item.category_color||'#999';
+      h += `<div class="card"><div class="card-body"><div class="card-tags"><span class="tag" style="background:${cc}12;color:${cc}">${item.category_name||'未分類'}</span><span class="tag" style="background:${st.bg};color:${st.color}"><span class="tag-dot" style="background:${st.dot}"></span>${st.label}</span></div><h3>${item.name}</h3><p class="card-desc">${item.description||''}</p><div style="display:flex;align-items:center;justify-content:space-between"><div><span class="card-price">${fmtPrice(item.price)}</span><span class="card-unit">/ ${item.unit}</span></div><span class="card-sku">${item.sku||''}</span></div><div class="card-footer"><button class="card-action" onclick='editItem("${item.id}")'>${I.edit} 編集</button><button class="card-action" onclick='dupItem("${item.id}")'>${I.copy} 複製</button><button class="card-action danger" onclick='state.deleteTarget="${item.id}";state.modal="delete";render()'>${I.trash} 削除</button></div></div></div>`;
+    });
+    h += '</div>';
+  } else {
+    h += '<div class="table-wrap"><table><thead><tr><th>SKU</th><th>商品名</th><th>カテゴリ</th><th>価格</th><th>ステータス</th><th>操作</th></tr></thead><tbody>';
+    filtered.forEach(item => {
+      const st=STATUS_MAP[item.status]||STATUS_MAP.draft; const cc=item.category_color||'#999';
+      h += `<tr><td class="td-sku">${item.sku||'—'}</td><td class="td-name">${item.name}</td><td><span class="tag" style="font-size:12px;background:${cc}12;color:${cc}">${item.category_name||'未分類'}</span></td><td class="td-price">${fmtPrice(item.price)}<span style="font-size:11px;color:#9ca3af;font-weight:400">/${item.unit}</span></td><td><span class="tag" style="font-size:11px;background:${st.bg};color:${st.color}"><span class="tag-dot" style="background:${st.dot}"></span>${st.label}</span></td><td><div class="td-actions"><button onclick='editItem("${item.id}")'>${I.edit}</button><button onclick='dupItem("${item.id}")'>${I.copy}</button><button class="danger" onclick='state.deleteTarget="${item.id}";state.modal="delete";render()'>${I.trash}</button></div></td></tr>`;
+    });
+    h += '</tbody></table></div>';
+  }
+  h += '</div>';
+
+  // Modals
+  if (state.modal==='item') {
+    const it=state.editingItem||{}; const units=['式','月','本','件','時間','ページ'];
+    h += `<div class="modal-overlay" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()"><div class="modal-header"><h2>${it.id?'編集':'新規追加'}</h2><button class="modal-close" onclick="closeModal()">${I.close}</button></div><div class="modal-body"><div class="form-grid">
+      <div class="form-field form-full"><label>商品名<span class="req">*</span></label><input id="f-name" value="${it.name||''}"></div>
+      <div class="form-field"><label>カテゴリ</label><select id="f-cat">${state.categories.map(c=>`<option value="${c.id}"${it.category_id===c.id?' selected':''}>${c.name}</option>`).join('')}</select></div>
+      <div class="form-field"><label>ステータス</label><select id="f-status"><option value="active"${it.status==='active'?' selected':''}>公開中</option><option value="draft"${it.status==='draft'||!it.status?' selected':''}>下書き</option><option value="archived"${it.status==='archived'?' selected':''}>アーカイブ</option></select></div>
+      <div class="form-field"><label>価格<span class="req">*</span></label><input id="f-price" type="number" value="${it.price||''}"></div>
+      <div class="form-field"><label>単位</label><select id="f-unit">${units.map(u=>`<option value="${u}"${it.unit===u?' selected':''}>${u==='月'?'月額':u}</option>`).join('')}</select></div>
+      <div class="form-field"><label>SKU</label><input id="f-sku" value="${it.sku||''}"></div>
+      <div class="form-field"><label>画像URL</label><input id="f-img" value="${it.image_url||''}"></div>
+      <div class="form-field form-full"><label>説明</label><textarea id="f-desc" rows="3">${it.description||''}</textarea></div>
+    </div><div class="form-actions"><button class="btn-cancel" onclick="closeModal()">キャンセル</button><button class="btn-save" onclick="submitItem()">${it.id?'更新':'追加'}</button></div></div></div></div>`;
+  }
+  if (state.modal==='category') {
+    const cols=['#1a5276','#6c3483','#a93226','#1e8449','#b9770e','#ec4899','#0891b2','#4f46e5'];
+    h += `<div class="modal-overlay" onclick="closeModal()"><div class="modal" style="max-width:640px" onclick="event.stopPropagation()"><div class="modal-header"><h2>カテゴリ管理</h2><button class="modal-close" onclick="closeModal()">${I.close}</button></div><div class="modal-body">
+      <div class="cat-add"><input id="cat-name" placeholder="新しいカテゴリ名" style="flex:1;min-width:150px;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:10px;font-size:14px;outline:none;font-family:'Noto Sans JP',sans-serif;background:#fafafa">
+      <div class="cat-colors">${cols.map(c=>`<button class="cat-color-btn" style="width:28px;height:28px;border-radius:8px;background:${c};border:2px solid transparent;cursor:pointer" onclick="document.querySelectorAll('.cat-color-btn').forEach(b=>b.style.border='2px solid transparent');this.style.border='2.5px solid #111';this.dataset.color='${c}'" data-color="${c}"></button>`).join('')}</div>
+      <button class="cat-add-btn" onclick="submitCat()">追加</button></div>
+      <div class="cat-list">${state.categories.map(c=>`<div class="cat-chip"><div class="dot" style="background:${c.color}"></div><span>${c.name}</span><button onclick="deleteCategory('${c.id}')">×</button></div>`).join('')}</div>
+    </div></div></div>`;
+  }
+  if (state.modal==='delete') {
+    h += `<div class="modal-overlay" onclick="closeModal()"><div class="modal" style="max-width:400px" onclick="event.stopPropagation()"><div class="modal-header"><h2>削除確認</h2><button class="modal-close" onclick="closeModal()">${I.close}</button></div><div class="modal-body"><p style="margin:0 0 20px;font-size:14px;color:#374151;line-height:1.6">このアイテムを削除しますか？</p><div class="form-actions"><button class="btn-cancel" onclick="closeModal()">キャンセル</button><button class="btn-delete" onclick="deleteItem('${state.deleteTarget}')">削除する</button></div></div></div></div>`;
+  }
+  if (state.toast) h += `<div class="toast ${state.toast.type}">${state.toast.msg}</div>`;
+
+  app.innerHTML = h;
+}
+
+function editItem(id){const it=state.items.find(i=>i.id===id);if(it){state.editingItem=it;state.modal='item';render();}}
+function dupItem(id){const it=state.items.find(i=>i.id===id);if(it)duplicateItem(it);}
+function closeModal(){state.modal=null;state.editingItem=null;state.deleteTarget=null;render();}
+function submitItem(){const f={id:state.editingItem?.id||null,name:document.getElementById('f-name').value.trim(),description:document.getElementById('f-desc').value,category_id:document.getElementById('f-cat').value,price:document.getElementById('f-price').value,unit:document.getElementById('f-unit').value,status:document.getElementById('f-status').value,sku:document.getElementById('f-sku').value,image_url:document.getElementById('f-img').value};if(!f.name){alert('商品名を入力してください');return;}saveItem(f);}
+function submitCat(){const n=document.getElementById('cat-name').value.trim();const a=document.querySelector('.cat-color-btn[style*="2.5px"]');const c=a?.dataset.color||'#2563eb';if(n)addCategory(n,c);}
+
+// === Init ===
+(async()=>{
+  if(!SUPABASE_URL||SUPABASE_URL==='__SUPABASE_URL__'){render();return;}
+  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+  const{data:{session}}=await sb.auth.getSession();
+  if(session){user=session.user;await loadData();}else{render();}
+})();
+</script>
+</body>
+</html>
