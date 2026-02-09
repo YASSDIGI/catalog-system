@@ -118,9 +118,11 @@
 <body>
 <div id="app"></div>
 <script>
-// ビルド時に環境変数が注入される
-const SUPABASE_URL = '__SUPABASE_URL__';
-const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+// ビルド時に環境変数が注入される。未注入ならlocalStorageから取得
+const _buildUrl = '__SUPABASE_URL__';
+const _buildKey = '__SUPABASE_ANON_KEY__';
+const SUPABASE_URL = (_buildUrl && _buildUrl !== '__' + 'SUPABASE_URL' + '__') ? _buildUrl : (localStorage.getItem('catalog_sb_url') || '');
+const SUPABASE_ANON_KEY = (_buildKey && _buildKey !== '__' + 'SUPABASE_ANON_KEY' + '__') ? _buildKey : (localStorage.getItem('catalog_sb_key') || '');
 
 let sb = null, user = null;
 let state = {
@@ -179,6 +181,12 @@ async function handleLogout() {
   await sb.auth.signOut();
   user = null;
   render();
+}
+
+function resetConnection() {
+  localStorage.removeItem('catalog_sb_url');
+  localStorage.removeItem('catalog_sb_key');
+  location.reload();
 }
 
 // === Data ===
@@ -241,8 +249,17 @@ function render() {
   const app = document.getElementById('app');
 
   // Not configured
-  if (!SUPABASE_URL || SUPABASE_URL === '__SUPABASE_URL__') {
-    app.innerHTML = '<div class="login-screen"><div class="login-card"><h1>⚙️ 設定が必要です</h1><p>Vercel の環境変数に <code>NEXT_PUBLIC_SUPABASE_URL</code> と <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> を設定し、再デプロイしてください。</p></div></div>';
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    app.innerHTML = `<div class="login-screen"><div class="login-card">
+      <h1>📦 カタログ管理 - 接続設定</h1>
+      <p>Supabase Dashboard → Settings → API から<br>Project URL と anon key を入力してください。</p>
+      <label>Supabase URL</label>
+      <input id="setup-url" placeholder="https://xxxxx.supabase.co" value="${localStorage.getItem('catalog_sb_url')||''}">
+      <label>Anon Key</label>
+      <input id="setup-key" placeholder="eyJhbGciOiJIUzI1NiIs..." value="${localStorage.getItem('catalog_sb_key')||''}">
+      <button class="login-btn" onclick="var u=document.getElementById('setup-url').value.trim();var k=document.getElementById('setup-key').value.trim();if(!u||!k){alert('両方入力してください');return;}localStorage.setItem('catalog_sb_url',u);localStorage.setItem('catalog_sb_key',k);location.reload();">接続する</button>
+      <p style="font-size:12px;color:#9ca3af;margin-top:12px">Vercelデプロイ時は環境変数で自動設定されます</p>
+    </div></div>`;
     return;
   }
 
@@ -257,6 +274,7 @@ function render() {
       <div class="login-divider">または</div>
       <button class="login-btn" style="background:#374151;box-shadow:none" onclick="handleSignup()">新規アカウント作成</button>
       <div id="login-error" class="login-error"></div>
+      <p style="font-size:12px;color:#9ca3af;margin-top:16px;cursor:pointer;text-decoration:underline" onclick="resetConnection()">接続設定をリセット</p>
     </div></div>`;
     return;
   }
@@ -345,10 +363,29 @@ function submitCat(){const n=document.getElementById('cat-name').value.trim();co
 
 // === Init ===
 (async()=>{
-  if(!SUPABASE_URL||SUPABASE_URL==='__SUPABASE_URL__'){render();return;}
+  if(!SUPABASE_URL||!SUPABASE_ANON_KEY){render();return;}
   sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-  const{data:{session}}=await sb.auth.getSession();
-  if(session){user=session.user;await loadData();}else{render();}
+  try{
+    const{data:{session}}=await sb.auth.getSession();
+    if(session){user=session.user;await loadData();}else{render();}
+  }catch(e){
+    console.error('Init error:',e);
+    const isNetwork=e.message==='Failed to fetch'||e.message?.includes('fetch');
+    document.getElementById('app').innerHTML=`<div class="login-screen"><div class="login-card">
+      <h1>${isNetwork?'⚠️ 接続できません':'❌ エラー'}</h1>
+      ${isNetwork?`
+        <p>Supabaseへの接続に失敗しました。以下を確認してください：</p>
+        <ul style="text-align:left;font-size:13px;color:var(--muted);line-height:2.2;list-style:none;padding:0;margin:16px 0">
+          <li>✅ Supabase URLが正しいか（末尾の / は不要）</li>
+          <li>✅ Anon Keyが正しいか</li>
+          <li>✅ Supabaseプロジェクトが <strong>Active</strong> 状態か</li>
+          <li>💡 <strong>Claudeプレビューでは外部API接続は不可</strong>です。<br>HTMLをローカルで開くか、Vercelにデプロイしてください</li>
+        </ul>
+        <p style="font-size:11px;color:#9ca3af;margin-bottom:20px">接続先: ${SUPABASE_URL}</p>
+      `:`<p>${e.message}</p>`}
+      <button class="login-btn" style="background:#374151;box-shadow:none" onclick="localStorage.removeItem('catalog_sb_url');localStorage.removeItem('catalog_sb_key');location.reload();">接続設定をリセット</button>
+    </div></div>`;
+  }
 })();
 </script>
 </body>
